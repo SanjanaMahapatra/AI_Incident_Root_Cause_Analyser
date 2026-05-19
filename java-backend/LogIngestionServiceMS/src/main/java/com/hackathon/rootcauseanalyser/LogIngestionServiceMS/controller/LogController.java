@@ -23,6 +23,7 @@ public class LogController {
 
     @PostMapping("/ingest")
     public List<LogEntry> ingestLogs(@RequestBody List<LogEntryDTO> logs) {
+        logs.forEach(log -> System.out.println("logLevel: " + log.getLogLevel()));
         return logIngestionService.ingestLogs(logs);
     }
 
@@ -33,7 +34,7 @@ public class LogController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
 
-        Specification<LogEntry> spec = where((Specification<LogEntry>) null);
+        Specification<LogEntry> spec = (root, query, cb) -> cb.conjunction();
         if (logLevel != null) spec = spec.and((root, q, cb) -> cb.equal(root.get("logLevel"), logLevel));
         if (serviceName != null) spec = spec.and((root, q, cb) -> cb.equal(root.get("serviceName"), serviceName));
         if (from != null) spec = spec.and((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("timestamp"), from));
