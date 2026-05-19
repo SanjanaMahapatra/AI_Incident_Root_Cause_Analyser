@@ -1,7 +1,6 @@
 package com.hackathon.rootcauseanalyser.LogIngestionServiceMS.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,6 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class LogEntry {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,19 +21,19 @@ public class LogEntry {
     @Column(nullable = false)
     private LocalDateTime timestamp;
 
-    @Column(nullable = false, length = 20)
-    private String logLevel;
+    @Column(name = "log_level", nullable = false, length = 20)
+    private String logLevel;          // matches JSON field
 
     @Column(name = "service_name", nullable = false, length = 50)
     private String serviceName;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String message;
 
     @Column(name = "request_id", length = 50)
     private String requestId;
 
-    @Column(length = 50)
+    @Column(name = "username", length = 50)
     private String user;
 
     @Column(name = "client_ip", length = 45)

@@ -4,7 +4,6 @@ import com.hackathon.rootcauseanalyser.IncidentServiceMS.utility.JSONListConvert
 import jakarta.persistence.*;
 import lombok.*;
 
-import javax.print.attribute.standard.Severity;
 import java.time.LocalDateTime;
 import java.util.*;
 
