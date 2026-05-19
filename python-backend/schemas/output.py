@@ -6,3 +6,6 @@ class IncidentSummary(BaseModel):
     impact: str = Field(description="Impact on users or systems")
     recommended_actions: List[str] = Field(description="Step‑by‑step remediation actions")
     confidence_score: float = Field(ge=0, le=1, description="Confidence in the analysis")
+
+class ShortDescription(BaseModel):
+    short_description: str = Field(description="One‑sentence summary of the incident")
