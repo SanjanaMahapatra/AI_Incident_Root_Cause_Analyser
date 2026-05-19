@@ -1,51 +1,75 @@
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+import os
+
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ConfigDict
 from agents.graph import create_agent_graph
 from retrieval.ingestion import ingest_runbook
-from langgraph.checkpoint import BaseCheckpointSaver
-import os
-from dotenv import load_dotenv
+import uvicorn
+from utils.clients import fetch_logs_by_incident
+from json import JSONDecodeError
+from pydantic.alias_generators import to_camel
 
+from dotenv import load_dotenv
 load_dotenv()
+
+# import requests
+# response = requests.get("http://localhost:8082/api/incidents")
+# print(response.status_code)
+
+# Debug: verify API key is loaded (remove after testing)
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    print("WARNING: OPENAI_API_KEY not set. The LLM will not work.")
 
 app = FastAPI(title="GenAI Root Cause Analysis")
 
 class AnalysisRequest(BaseModel):
-    analysis_id: int   # from Java service
+    # analysis_id: int
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
     incident_id: int
     analysis_type: str
 
-class AnalysisResponse(BaseModel):
-    analysis_id: int
-    result_text: str
 
+class AnalysisResponse(BaseModel):
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True
+    )
+
+    # analysis_id: int
+    result_text: str
 class RunbookIngest(BaseModel):
     title: str
     content: str
 
-# Graph instance (singleton)
+# Graph instance
 graph = create_agent_graph()
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
 
-@app.post("/analyze", response_model=AnalysisResponse)
+@app.post("/api/analyze", response_model=AnalysisResponse)
 async def analyze_incident(req: AnalysisRequest):
+         
     try:
-        # Optionally fetch initial data to populate service name
-        from utils.clients import fetch_logs_by_incident
         logs = await fetch_logs_by_incident(req.incident_id)
         service = logs[0].get("serviceName") if logs else "unknown"
         
         state = {
             "incident_id": req.incident_id,
-            "service": service
+            "service": service,
+            "logs": logs,
+            "analysis_type": req.analysis_type
         }
-        config = {"configurable": {"thread_id": req.analysis_id}}  # checkpoint thread
-        final_state = graph.invoke(state, config=config)
+        final_state = await graph.ainvoke(state)
         result_text = final_state.get("summary", "{}")
-        return AnalysisResponse(analysis_id=req.analysis_id, result_text=result_text)
+        return AnalysisResponse(resultText=result_text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -56,11 +80,8 @@ async def ingest_runbook_endpoint(rb: RunbookIngest):
 
 @app.post("/feedback/{analysis_id}")
 async def submit_human_feedback(analysis_id: int, feedback: str):
-    """Submit human feedback to a previous analysis (resume from checkpoint)."""
-    config = {"configurable": {"thread_id": analysis_id}}
-    # Update state with human feedback and resume (simplified)
-    state = graph.get_state(config)
-    if state:
-        state.values["human_feedback"] = feedback
-        graph.update_state(config, state.values)
-    return {"status": "feedback recorded"}
+    # Placeholder for feedback handling
+    return {"status": "feedback recorded (not implemented)"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
